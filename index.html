@@ -8,20 +8,20 @@
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- React UMD -->
+  <!-- 1. React и ReactDOM (UMD) -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
-  <!-- Three.js -->
+  <!-- 2. Three.js -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 
-  <!-- @react-three/fiber UMD -->
+  <!-- 3. @react-three/fiber UMD -->
   <script src="https://cdn.jsdelivr.net/npm/@react-three/fiber@8.15.12/dist/umd/index.umd.cjs"></script>
 
-  <!-- @react-three/drei UMD -->
+  <!-- 4. @react-three/drei UMD -->
   <script src="https://cdn.jsdelivr.net/npm/@react-three/drei@9.88.0/dist/umd/index.umd.cjs"></script>
 
-  <!-- GSAP + ScrollTrigger -->
+  <!-- 5. GSAP и ScrollTrigger -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 
@@ -51,12 +51,22 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext } = React;
+    // Дождёмся загрузки всех библиотек
+    const { useState, useEffect, useRef, useMemo, createContext, useContext } = React;
     const { createRoot } = ReactDOM;
-    const { Canvas, useFrame, useThree } = ReactThreeFiber;
-    const { Environment, ContactShadows } = Drei;
 
-    // ==================== Simplex 3D Noise ====================
+    // Проверка глобальных переменных
+    const isLibsReady = () => {
+      return (
+        typeof THREE !== 'undefined' &&
+        typeof ReactThreeFiber !== 'undefined' &&
+        typeof Drei !== 'undefined' &&
+        typeof gsap !== 'undefined' &&
+        typeof ScrollTrigger !== 'undefined'
+      );
+    };
+
+    // Simplex 3D Noise (Stefan Gustavson)
     function simplexNoise3D(p) {
       const F3 = 1.0/3.0, G3 = 1.0/6.0;
       const grad3 = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],
@@ -82,7 +92,7 @@
       return 32*(n0+n1+n2+n3);
     }
 
-    // ==================== Translations ====================
+    // Переводы
     const translations = {
       en: {
         stylesTitle: "Our Styles",
@@ -113,7 +123,7 @@
       }
     };
 
-    // ==================== Smooth Scroll Engine ====================
+    // Плавный скролл
     const ScrollContext = createContext(0);
     const useScrollProgress = () => useContext(ScrollContext);
 
@@ -189,13 +199,13 @@
       );
     };
 
-    // ==================== 3D Scene ====================
+    // 3D‑компоненты (используют глобальные ReactThreeFiber и Drei)
     const MorphingBlob = () => {
       const meshRef = useRef();
       const origPositions = useRef(null);
       const geometryRef = useRef();
       const scrollProgress = useScrollProgress();
-      const { camera } = useThree();
+      const { camera } = ReactThreeFiber.useThree();
 
       useEffect(() => {
         const geo = meshRef.current.geometry;
@@ -205,7 +215,7 @@
         }
       }, []);
 
-      useFrame((state) => {
+      ReactThreeFiber.useFrame((state) => {
         if (!origPositions.current || !geometryRef.current) return;
         const t = state.clock.elapsedTime * 0.7;
         const geo = geometryRef.current;
@@ -230,8 +240,8 @@
         meshRef.current.rotation.x = Math.cos(state.clock.elapsedTime * 0.15) * 0.05;
       });
 
-      // Camera fly-through
-      useFrame(() => {
+      // Пролёт камеры
+      ReactThreeFiber.useFrame(() => {
         const p = scrollProgress;
         const startPos = [0, 0.2, 8];
         const endPos = [0, -2.5, 3.5];
@@ -282,7 +292,7 @@
         return arr;
       }, []);
 
-      useFrame(({ clock }) => {
+      ReactThreeFiber.useFrame(({ clock }) => {
         if (!groupRef.current) return;
         groupRef.current.children.forEach((child, i) => {
           if (child.isGroup) {
@@ -321,20 +331,20 @@
     };
 
     const Scene = () => (
-      <>
+      <React.Fragment>
         <color attach="background" args={['#050505']} />
         <fog attach="fog" args={['#050505', 10, 40]} />
         <ambientLight intensity={0.5} />
         <spotLight position={[5, 8, 10]} angle={0.3} intensity={2} color="#ff2d2d" castShadow />
         <spotLight position={[-5, 2, -5]} angle={0.4} intensity={1.5} color="#aaaaff" />
-        <Environment preset="city" />
-        <ContactShadows position={[0, -2.5, 0]} opacity={0.6} scale={10} blur={3} far={10} />
+        <Drei.Environment preset="city" />
+        <Drei.ContactShadows position={[0, -2.5, 0]} opacity={0.6} scale={10} blur={3} far={10} />
         <MorphingBlob />
         <Needles />
-      </>
+      </React.Fragment>
     );
 
-    // ==================== UI Components ====================
+    // UI
     const Preloader = ({ onLoaded }) => {
       const containerRef = useRef(null);
       useEffect(() => {
@@ -408,7 +418,7 @@
 
     const MapSection = ({ t }) => {
       const markerRef = useRef();
-      useFrame(({ clock }) => {
+      ReactThreeFiber.useFrame(({ clock }) => {
         if (markerRef.current) {
           markerRef.current.style.transform = `translate(-50%, -50%) scale(${1 + Math.sin(clock.elapsedTime * 3) * 0.08})`;
         }
@@ -451,11 +461,28 @@
       </>
     );
 
-    // ==================== App ====================
+    // Главный компонент, проверяющий загрузку библиотек
     const App = () => {
       const [loading, setLoading] = useState(true);
+      const [libsReady, setLibsReady] = useState(false);
       const [lang, setLang] = useState('en');
       const t = translations[lang];
+
+      useEffect(() => {
+        // Ждём появления всех глобальных объектов
+        const interval = setInterval(() => {
+          if (isLibsReady()) {
+            setLibsReady(true);
+            clearInterval(interval);
+          }
+        }, 50);
+        return () => clearInterval(interval);
+      }, []);
+
+      // Пока библиотеки не готовы — показываем чёрный экран
+      if (!libsReady) {
+        return <div className="fixed inset-0 bg-black" />;
+      }
 
       return (
         <>
@@ -465,18 +492,19 @@
             <Content t={t} />
           </SmoothScroll>
           <div className="fixed inset-0 -z-10">
-            <Canvas
+            <ReactThreeFiber.Canvas
               camera={{ position: [0, 0, 8], fov: 45, near: 0.1, far: 50 }}
               dpr={[1, 2]}
               gl={{ antialias: true, powerPreference: 'high-performance' }}
             >
               <Scene />
-            </Canvas>
+            </ReactThreeFiber.Canvas>
           </div>
         </>
       );
     };
 
+    // Рендер
     const root = createRoot(document.getElementById('root'));
     root.render(<App />);
   </script>
