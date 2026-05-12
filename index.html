@@ -1,13 +1,485 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://tailwindcss.com"></script>
-    <title>Luxury Site</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="./App.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gladiator Tattoo – Luxury Prague Studio</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- React UMD -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <!-- Three.js -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+  <!-- @react-three/fiber UMD -->
+  <script src="https://cdn.jsdelivr.net/npm/@react-three/fiber@8.15.12/dist/umd/index.umd.cjs"></script>
+
+  <!-- @react-three/drei UMD -->
+  <script src="https://cdn.jsdelivr.net/npm/@react-three/drei@9.88.0/dist/umd/index.umd.cjs"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+  <!-- Babel для JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Шрифты -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Space+Mono&display=swap" rel="stylesheet" />
+
+  <style>
+    /* Глобальный сброс */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100vw; overflow-x: hidden; background: #0a0a0a; font-family: 'Space Mono', monospace; color: #fff; }
+    #root { position: relative; width: 100%; }
+    .font-serif { font-family: 'Playfair Display', serif; }
+    .glass {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .nav-logo { font-family: 'Playfair Display', serif; font-size: 1.4rem; letter-spacing: 0.15em; color: #fff; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext, Suspense } = React;
+    const { createRoot } = ReactDOM;
+    const {
+      Canvas,
+      useFrame,
+      useThree,
+    } = ReactThreeFiber;
+    const {
+      Environment,
+      ContactShadows,
+      useEnvironment,
+    } = Drei;
+
+    // ==================== SIMPLEX 3D NOISE ====================
+    // Реализация Стефана Густавсона (открытая лицензия)
+    function simplexNoise3D(p) {
+      const F3 = 1.0/3.0, G3 = 1.0/6.0;
+      const grad3 = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],
+                     [1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],
+                     [0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
+      const perm = new Uint8Array(512);
+      const permTable = [151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180];
+      for (let i=0; i<512; i++) perm[i] = permTable[i & 255];
+      function dot3(g, x, y, z) { return g[0]*x + g[1]*y + g[2]*z; }
+      let s = (p[0]+p[1]+p[2])*F3, i=Math.floor(p[0]+s), j=Math.floor(p[1]+s), k=Math.floor(p[2]+s);
+      let t = (i+j+k)*G3, X0=i-t, Y0=j-t, Z0=k-t, x0=p[0]-X0, y0=p[1]-Y0, z0=p[2]-Z0;
+      let i1, j1, k1, i2, j2, k2;
+      if(x0>=y0) { if(y0>=z0) { i1=1; j1=0; k1=0; i2=1; j2=1; k2=0; }
+        else if(x0>=z0) { i1=1; j1=0; k1=0; i2=1; j2=0; k2=1; }
+        else { i1=0; j1=0; k1=1; i2=1; j2=0; k2=1; } }
+      else { if(y0<z0) { i1=0; j1=0; k1=1; i2=0; j2=1; k2=1; }
+        else if(x0<z0) { i1=0; j1=1; k1=0; i2=0; j2=1; k2=1; }
+        else { i1=0; j1=1; k1=0; i2=1; j2=1; k2=0; } }
+      let x1=x0-i1+G3, y1=y0-j1+G3, z1=z0-k1+G3,
+          x2=x0-i2+2*G3, y2=y0-j2+2*G3, z2=z0-k2+2*G3,
+          x3=x0-1+3*G3, y3=y0-1+3*G3, z3=z0-1+3*G3;
+      let ii=i&255, jj=j&255, kk=k&255, n0=0,n1=0,n2=0,n3=0;
+      let t0=0.6-x0*x0-y0*y0-z0*z0; if(t0<0) n0=0; else { t0*=t0; n0 = t0*t0*dot3(grad3[perm[ii+perm[jj+perm[kk]]]%12], x0, y0, z0); }
+      let t1=0.6-x1*x1-y1*y1-z1*z1; if(t1<0) n1=0; else { t1*=t1; n1 = t1*t1*dot3(grad3[perm[ii+i1+perm[jj+j1+perm[kk+k1]]]%12], x1, y1, z1); }
+      let t2=0.6-x2*x2-y2*y2-z2*z2; if(t2<0) n2=0; else { t2*=t2; n2 = t2*t2*dot3(grad3[perm[ii+i2+perm[jj+j2+perm[kk+k2]]]%12], x2, y2, z2); }
+      let t3=0.6-x3*x3-y3*y3-z3*z3; if(t3<0) n3=0; else { t3*=t3; n3 = t3*t3*dot3(grad3[perm[ii+1+perm[jj+1+perm[kk+1]]]%12], x3, y3, z3); }
+      return 32*(n0+n1+n2+n3);
+    }
+
+    // ==================== ПЕРЕВОДЫ (EN / CZ / RU) ====================
+    const translations = {
+      en: {
+        stylesTitle: "Our Styles",
+        realism: { name: "Realism", desc: "Hyper‑realistic portraits & nature." },
+        blackwork: { name: "Blackwork", desc: "Geometric patterns & heavy contrast." },
+        traditional: { name: "Traditional", desc: "Bold lines & classic sailor motives." },
+        mastersTitle: "Masters",
+        mapTitle: "Find Us",
+        mapAddress: "Rybná 650/1, 110 00 Staré Město, Prague"
+      },
+      cz: {
+        stylesTitle: "Naše Styly",
+        realism: { name: "Realismus", desc: "Hyperrealistické portréty a příroda." },
+        blackwork: { name: "Blackwork", desc: "Geometrické vzory a silný kontrast." },
+        traditional: { name: "Tradiční", desc: "Silné linie a klasické námořnické motivy." },
+        mastersTitle: "Mistři",
+        mapTitle: "Najdete nás",
+        mapAddress: "Rybná 650/1, 110 00 Staré Město, Praha"
+      },
+      ru: {
+        stylesTitle: "Наши Стили",
+        realism: { name: "Реализм", desc: "Гиперреалистичные портреты и природа." },
+        blackwork: { name: "Блэкворк", desc: "Геометрические узоры и глубокий контраст." },
+        traditional: { name: "Традишнл", desc: "Жирные линии и классические морские сюжеты." },
+        mastersTitle: "Мастера",
+        mapTitle: "Найти нас",
+        mapAddress: "Рыбна 650/1, 110 00 Старе Место, Прага"
+      }
+    };
+
+    // ==================== ПЛАВНЫЙ СКРОЛЛ ====================
+    const ScrollContext = createContext(0);
+    const useScrollProgress = () => useContext(ScrollContext);
+
+    const useSmoothScroll = () => {
+      const [progress, setProgress] = useState(0);
+      const contentRef = useRef(null);
+      const wrapperRef = useRef(null);
+      const targetScroll = useRef(0);
+      const currentScroll = useRef(0);
+      const viewportH = useRef(window.innerHeight);
+      const totalH = useRef(0);
+
+      useEffect(() => {
+        const handleResize = () => {
+          viewportH.current = window.innerHeight;
+          if (contentRef.current) {
+            totalH.current = contentRef.current.offsetHeight;
+          }
+        };
+        handleResize();
+        window.addEventListener('resize', handleResize);
+
+        const handleWheel = (e) => {
+          e.preventDefault();
+          targetScroll.current += e.deltaY;
+          targetScroll.current = Math.max(0, Math.min(targetScroll.current, Math.max(0, totalH.current - viewportH.current)));
+        };
+        const handleTouch = (e) => {
+          if (e.touches.length === 1) {
+            const touch = e.touches[0];
+            if (!touch.startY) touch.startY = touch.clientY;
+            const delta = touch.startY - touch.clientY;
+            touch.startY = touch.clientY;
+            targetScroll.current += delta;
+            targetScroll.current = Math.max(0, Math.min(targetScroll.current, Math.max(0, totalH.current - viewportH.current)));
+            e.preventDefault();
+          }
+        };
+
+        window.addEventListener('wheel', handleWheel, { passive: false });
+        window.addEventListener('touchmove', handleTouch, { passive: false });
+        window.addEventListener('touchstart', (e) => { e.touches[0].startY = e.touches[0].clientY; }, { passive: true });
+
+        let raf;
+        const loop = () => {
+          currentScroll.current += (targetScroll.current - currentScroll.current) * 0.07;
+          const diff = targetScroll.current - currentScroll.current;
+          if (Math.abs(diff) > 0.01) currentScroll.current += diff * 0.07;
+          else currentScroll.current = targetScroll.current;
+
+          if (wrapperRef.current) {
+            wrapperRef.current.style.transform = `translateY(${-currentScroll.current}px)`;
+          }
+          const maxScroll = Math.max(0, totalH.current - viewportH.current);
+          setProgress(maxScroll ? currentScroll.current / maxScroll : 0);
+          gsap.ScrollTrigger?.update();
+          raf = requestAnimationFrame(loop);
+        };
+        raf = requestAnimationFrame(loop);
+
+        return () => {
+          cancelAnimationFrame(raf);
+          window.removeEventListener('wheel', handleWheel);
+          window.removeEventListener('touchmove', handleTouch);
+          window.removeEventListener('resize', handleResize);
+        };
+      }, []);
+
+      return { progress, wrapperRef, contentRef, ScrollProvider: ({ children }) => (
+        <ScrollContext.Provider value={progress}>{children}</ScrollContext.Provider>
+      )};
+    };
+
+    // ==================== 3D: ЖИДКИЙ ХРОМ ====================
+    const MorphingBlob = () => {
+      const meshRef = useRef();
+      const origPositions = useRef(null);
+      const geometryRef = useRef();
+      const { camera } = useThree();
+      const scrollProgress = useScrollProgress();
+
+      useEffect(() => {
+        if (origPositions.current) return;
+        const geo = meshRef.current.geometry;
+        geometryRef.current = geo;
+        origPositions.current = new Float32Array(geo.attributes.position.array);
+      }, []);
+
+      useFrame((state) => {
+        if (!origPositions.current) return;
+        const t = state.clock.elapsedTime * 0.7;
+        const geo = geometryRef.current;
+        const pos = geo.attributes.position.array;
+        const orig = origPositions.current;
+        const amp = 0.35 + scrollProgress * 0.5; // усиливаем шум при скролле
+
+        for (let i = 0; i < pos.length; i += 3) {
+          const x = orig[i], y = orig[i+1], z = orig[i+2];
+          const noise = simplexNoise3D([x*2.5 + t, y*2.5, z*2.5]);
+          const noise2 = simplexNoise3D([x*4 - t*0.6, y*4, z*4]);
+          const displacement = (noise * 0.4 + noise2 * 0.2) * amp;
+          const nx = x / 1.8, ny = y / 1.8, nz = z / 1.8;
+          pos[i]   = x + nx * displacement;
+          pos[i+1] = y + ny * displacement;
+          pos[i+2] = z + nz * displacement;
+        }
+        geo.attributes.position.needsUpdate = true;
+        geo.computeVertexNormals();
+
+        // Лёгкое вращение
+        meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.2) * 0.1;
+        meshRef.current.rotation.x = Math.cos(state.clock.elapsedTime * 0.15) * 0.05;
+      });
+
+      // Пролёт камеры
+      useFrame(() => {
+        const startPos = [0, 0.2, 8];
+        const endPos   = [0, -2.5, 3.5];
+        const startLook = [0, 0, 0];
+        const endLook   = [0, -0.5, 0];
+        const p = scrollProgress;
+        gsap.to(camera.position, {
+          x: startPos[0]*(1-p)+endPos[0]*p,
+          y: startPos[1]*(1-p)+endPos[1]*p,
+          z: startPos[2]*(1-p)+endPos[2]*p,
+          duration: 0.5, overwrite: true
+        });
+        camera.lookAt(
+          startLook[0]*(1-p)+endLook[0]*p,
+          startLook[1]*(1-p)+endLook[1]*p,
+          startLook[2]*(1-p)+endLook[2]*p
+        );
+      });
+
+      return (
+        <mesh ref={meshRef} position={[0,0,0]} scale={1}>
+          <sphereGeometry args={[1.8, 128, 128]} />
+          <meshPhysicalMaterial
+            color="#888888"
+            metalness={1}
+            roughness={0.05}
+            clearcoat={0.6}
+            clearcoatRoughness={0.1}
+            reflectivity={1}
+          />
+        </mesh>
+      );
+    };
+
+    // Иглы и капли (для атмосферы)
+    const Needles = () => {
+      const groupRef = useRef();
+      const needles = useMemo(() => {
+        const arr = [];
+        for (let i=0; i<30; i++) {
+          const angle = (i/30)*Math.PI*2;
+          const r = 2.8+Math.random()*1.5;
+          arr.push({
+            pos: [Math.cos(angle)*r, (Math.random()-0.5)*3.5, Math.sin(angle)*r-1.5],
+            rot: [0,0,Math.random()*Math.PI],
+            s: 0.4+Math.random()*0.6
+          });
+        }
+        return arr;
+      }, []);
+
+      useFrame(({ clock }) => {
+        groupRef.current.children.forEach((child, i) => {
+          child.position.y += Math.sin(clock.elapsedTime*2 + i)*0.001;
+          child.rotation.z += 0.003;
+        });
+      });
+
+      return (
+        <group ref={groupRef}>
+          {needles.map((n,i) => (
+            <group key={i} position={n.pos} rotation={n.rot} scale={n.s}>
+              <mesh>
+                <cylinderGeometry args={[0.02,0.02,0.8,8]} />
+                <meshStandardMaterial color="#ccc" metalness={0.9} roughness={0.1} />
+              </mesh>
+              <mesh position={[0,0.45,0]}>
+                <coneGeometry args={[0.03,0.2,8]} />
+                <meshStandardMaterial color="#e0e0e0" metalness={0.95} roughness={0.05} />
+              </mesh>
+              <mesh position={[0,-0.2,0.1]}>
+                <sphereGeometry args={[0.05,8,8]} />
+                <meshStandardMaterial color="#111" emissive="#110000" roughness={0.4} />
+              </mesh>
+            </group>
+          ))}
+          {/* Капли чернил */}
+          {Array.from({length:10}).map((_,i)=> (
+            <mesh key={`ink-${i}`} position={[(Math.random()-0.5)*6, (Math.random()-0.5)*6, (Math.random()-0.5)*4-2]}>
+              <sphereGeometry args={[0.06,6,6]} />
+              <meshStandardMaterial color="#1a0000" emissive="#330000" roughness={0.6} />
+            </mesh>
+          ))}
+        </group>
+      );
+    };
+
+    const Scene = () => (
+      <>
+        <color attach="background" args={['#050505']} />
+        <fog attach="fog" args={['#050505', 10, 40]} />
+        <ambientLight intensity={0.5} />
+        <spotLight position={[5,8,10]} angle={0.3} intensity={2} color="#ff2d2d" castShadow />
+        <spotLight position={[-5,2,-5]} angle={0.4} intensity={1.5} color="#aaaaff" />
+        <Environment preset="city" />
+        <ContactShadows position={[0,-2.5,0]} opacity={0.6} scale={10} blur={3} far={10} />
+        <MorphingBlob />
+        <Needles />
+      </>
+    );
+
+    // ==================== КОМПОНЕНТЫ КОНТЕНТА ====================
+    const Preloader = ({ onLoaded }) => {
+      const ref = useRef();
+      useEffect(() => {
+        const tl = gsap.timeline({
+          onComplete: () => {
+            gsap.to(ref.current, { clipPath: 'inset(0% 0% 100% 0%)', duration: 1.2, ease: 'power4.inOut', onComplete: onLoaded });
+          }
+        });
+        tl.fromTo(ref.current.querySelector('h1'), { opacity:0, scale:1.2, filter:'blur(20px)' },
+          { opacity:1, scale:1, filter:'blur(0px)', duration:1.8, ease:'power3.out' })
+          .to(ref.current.querySelector('h1'), { keyframes: [{ textShadow:'-4px 0 red, 4px 0 blue', duration:0.1 }, { textShadow:'0 0 transparent', duration:0.1 }], duration:0.4 }, '+=0.3');
+      }, []);
+      return (
+        <div ref={ref} className="fixed inset-0 z-[1000] bg-black flex items-center justify-center" style={{ clipPath: 'inset(0% 0% 0% 0%)' }}>
+          <h1 className="font-serif text-[clamp(3rem,12vw,8rem)] tracking-[0.2em] text-[#f0f0f0] uppercase">Gladiator</h1>
+        </div>
+      );
+    };
+
+    const Navbar = ({ lang, setLang }) => (
+      <nav className="fixed top-0 left-0 w-full px-12 py-6 flex justify-between items-center z-[100] glass pointer-events-auto">
+        <div className="nav-logo">⚔️ GLADIATOR</div>
+        <div className="flex gap-2">
+          {['en','cz','ru'].map(l => (
+            <button key={l}
+              onClick={() => setLang(l)}
+              className={`px-3 py-1 text-sm font-mono border border-white/20 rounded transition ${lang===l ? 'bg-red-600 text-white border-red-600' : 'text-gray-400 hover:scale-105'}`}
+            >{l.toUpperCase()}</button>
+          ))}
+        </div>
+      </nav>
+    );
+
+    const Masters = ({ t }) => {
+      const works = [
+        { src: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=800&fit=crop', artist: 'Viktor Valkov' },
+        { src: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&h=800&fit=crop', artist: 'Anna Šeredová' },
+        { src: 'https://images.unsplash.com/photo-1519946242168-29d9ebf5a537?w=600&h=800&fit=crop', artist: 'Oldřich Hladík' }
+      ];
+      return (
+        <section className="py-20 px-8 max-w-7xl mx-auto">
+          <h2 className="font-serif text-5xl md:text-6xl mb-12 tracking-wider">{t.mastersTitle}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {works.map((w,i) => (
+              <div key={i} className="relative h-[500px] rounded-xl overflow-hidden group">
+                <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage:`url(${w.src})` }} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent flex items-end p-6">
+                  <span className="text-2xl font-light tracking-wide">{w.artist}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+    };
+
+    const MapSection = ({ t }) => {
+      const markerRef = useRef();
+      useFrame(({ clock }) => {
+        if (markerRef.current)
+          markerRef.current.style.transform = `translate(-50%,-50%) scale(${1+Math.sin(clock.elapsedTime*3)*0.08})`;
+      });
+      return (
+        <section className="py-20 px-8 max-w-4xl mx-auto text-center">
+          <h2 className="font-serif text-5xl md:text-6xl mb-12 tracking-wider">{t.mapTitle}</h2>
+          <div className="relative inline-block">
+            <img src="https://images.unsplash.com/photo-1528920304568-7aa06b3dda8b?w=800&h=400&fit=crop" alt="map" className="opacity-40 rounded-xl max-w-full" />
+            <div ref={markerRef} className="absolute top-[52%] left-[48%] w-6 h-6 bg-red-600 rounded-full shadow-[0_0_20px_#ff2d2d] pointer-events-none" />
+          </div>
+          <p className="mt-6 text-lg opacity-80">{t.mapAddress}</p>
+        </section>
+      );
+    };
+
+    const Footer = () => (
+      <footer className="py-10 text-center opacity-50 text-sm">
+        © 2026 Gladiator Tattoo Studio. Rybná 650/1, Prague 1.
+      </footer>
+    );
+
+    const Content = ({ t }) => (
+      <>
+        {/* Hero (пустое место под 3D) */}
+        <section className="h-screen" />
+        
+        {/* Стили */}
+        <section className="py-20 px-8 max-w-7xl mx-auto">
+          <h2 className="font-serif text-5xl md:text-6xl mb-12 tracking-wider">{t.stylesTitle}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {['realism','blackwork','traditional'].map(style => (
+              <div key={style} className="glass rounded-2xl p-8 transition-transform duration-300 hover:scale-[1.03] hover:-translate-y-1">
+                <h3 className="text-2xl font-bold mb-4">{t[style].name}</h3>
+                <p className="text-gray-300">{t[style].desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <Masters t={t} />
+        <MapSection t={t} />
+        <Footer />
+      </>
+    );
+
+    // ==================== ГЛАВНЫЙ КОМПОНЕНТ ====================
+    const App = () => {
+      const [loading, setLoading] = useState(true);
+      const [lang, setLang] = useState('en');
+      const t = translations[lang];
+      const { progress, wrapperRef, contentRef, ScrollProvider } = useSmoothScroll();
+
+      return (
+        <>
+          {loading && <Preloader onLoaded={() => setLoading(false)} />}
+          <Navbar lang={lang} setLang={setLang} />
+          <ScrollProvider>
+            {/* Плавно‑скроллящийся контент */}
+            <div ref={wrapperRef} className="will-change-transform">
+              <div ref={contentRef}>
+                <Content t={t} />
+              </div>
+            </div>
+          </ScrollProvider>
+          {/* 3D-сцена (фиксированный фон) */}
+          <div className="fixed inset-0 -z-10">
+            <Canvas camera={{ position:[0,0,8], fov:45, near:0.1, far:50 }} dpr={[1,2]} gl={{ antialias:true, powerPreference:'high-performance' }}>
+              <Scene />
+            </Canvas>
+          </div>
+        </>
+      );
+    };
+
+    // Рендер
+    const root = createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
 </html>
